@@ -180,3 +180,10 @@ test('mobility and core: two guided mobility flows with timers, and one core ses
   const core = m.find(s => !s.cardio);
   assert.ok(core.blocks.flatMap(b => b.items).filter(i => i.ex).length >= 5);
 });
+
+test('every step of every session has a stick figure, not only the lifts', () => {
+  for (const s of SESSIONS) for (const b of s.blocks) for (const i of b.items) {
+    if (i.ex) continue;
+    assert.ok(i.fig && ALLFIGS[i.fig], s.id + '/' + i.id + ' (' + i.name + ') has no figure');
+  }
+});

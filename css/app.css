@@ -309,7 +309,8 @@ details.how{margin-top:6px}
 .mrow.wide .mn{min-width:104px}
 .mrow .mb.plain{background-image:none}
 
-.drill-fig{width:104px;margin:6px 0 2px}
+.drill-fig{float:right;width:86px;margin:0 0 6px 12px}
+.ex:has(.drill-fig) .ex-row,.ex:has(.drill-fig) details.how{clear:both}
 .srow .did{display:inline-block;width:15px;height:15px;margin-left:6px;vertical-align:-2px;color:#3E7B4F}
 .srow .did svg{width:15px;height:15px;display:block}
 .auto{margin:0 0 14px}

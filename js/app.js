@@ -213,8 +213,7 @@ function renderWorkout() {
     for (const it of b.items) {
       if (!it.ex) {
         const pills = a.checks[it.id].map((_, i) => '<button type="button" class="pill" data-warm="' + esc(it.id) + '" data-i="' + i + '" data-b="' + bi + '" aria-pressed="false" aria-label="' + esc(it.name) + ', ' + (i + 1) + '">' + (i + 1) + '</button>').join('');
-        html += '<div class="ex"><div class="ex-name">' + esc(it.name) + ' <span class="rx" style="margin:0 0 0 6px">' + esc(it.rx) + '</span></div><p class="note">' + esc(it.note || '') + '</p>'
-          + (it.fig ? '<div class="drill-fig">' + figureSVG(it.fig, { animate: anim, label: it.name }) + '</div>' : '')
+        html += '<div class="ex">' + (it.fig ? '<div class="drill-fig">' + figureSVG(it.fig, { animate: anim, label: it.name }) + '</div>' : '') + '<div class="ex-name">' + esc(it.name) + ' <span class="rx" style="margin:0 0 0 6px">' + esc(it.rx) + '</span></div><p class="note">' + esc(it.note || '') + '</p>'
           + (Array.isArray(it.how) ? '<details class="how"><summary>How to do it</summary><div class="howto">' + list(it.how) + '</div></details>' : '')
           + '<div class="ex-row"><div class="pills">' + pills + '</div>' + (it.timer ? '<button type="button" class="timer-btn" data-timer="' + esc(it.id) + '" data-sec="' + it.timer + '" data-b="' + bi + '">Start ' + clock(it.timer) + ' timer</button>' : '') + '</div></div>';
         continue;

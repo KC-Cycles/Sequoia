@@ -1040,3 +1040,13 @@ export const SESSIONS = [
     ]
   }
 ];
+
+// Every step gets a stick figure. Lifts take theirs from the exercise; other steps are matched here,
+// first by what the step is and then by the kind of session it belongs to.
+const STEP_FIG = { walk: 'walk', walkdown: 'walk', bwsquat: 'bwsquat', bridge: 'bridge', wgs: 'wgs', stairs: 'stepup', stairs3: 'stepup', hinge: 'hingedrill',
+  ramp: 'squat', rampdl: 'trapdl', rampfs: 'frontsquat', ramprdl: 'rdl', rampbench: 'bench', ramppress: 'press', rower: 'rower', openbook: 'book', book: 'book',
+  hang: 'hang', scap: 'scap', easypush: 'pushup', rope: 'rope', halo: 'halo', swings: 'swings', calf: 'calf', hipflex: 'hipflex', couch: 'hipflex', ninety: 'ninety',
+  squat: 'deepsquat', ankle: 'ankle', ham: 'ham', figure4: 'figure4', catcow: 'catcow', thread: 'thread', wall: 'wall', lat: 'lat', pec: 'pec', chin: 'chin',
+  bobs: 'bobs', glide: 'glide', sidekick: 'sidekick', sixkick: 'sixkick', catchup: 'catchup', fingertip: 'fingertip', onearm: 'onearm', sight: 'sight', drill: 'sidekick', wudrill: 'sidekick' };
+const KIND_FIG = { run: 'run', bike: 'ride', swim: 'freestyle' };
+for (const s of SESSIONS) for (const b of s.blocks) for (const i of b.items) if (!i.ex && !i.fig) i.fig = STEP_FIG[i.id] || KIND_FIG[s.group];

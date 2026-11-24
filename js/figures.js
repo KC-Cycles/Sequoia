@@ -111,6 +111,10 @@ function fixedProps(props) {
     if (p.k === 'bar') s += '<line x1="' + p.x + '" y1="1" x2="' + p.x + '" y2="' + (p.y - 2.4) + '"/><circle cx="' + p.x + '" cy="' + p.y + '" r="2.4"/>';
     if (p.k === 'anchor') s += '<line x1="' + p.x + '" y1="3" x2="' + p.x + '" y2="113.4"/><circle cx="' + p.x + '" cy="' + p.y + '" r="2.6"/>';
   }
+  for (const p of props) {
+    if (p.k === 'wheel') s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + p.r + '"/>';
+    if (p.k === 'seg') s += '<line x1="' + p.p[0] + '" y1="' + p.p[1] + '" x2="' + p.p[2] + '" y2="' + p.p[3] + '"/>';
+  }
   for (const p of props) if (p.k === 'water') s += '<path fill="none" d="M4 ' + p.y + ' q7 -2.6 14 0 t14 0 t14 0 t14 0 t14 0 t14 0 t14 0 t14 0"/>';
   return '<g class="fig-prop">' + s + '</g>';
 }

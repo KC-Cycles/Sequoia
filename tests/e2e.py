@@ -74,6 +74,7 @@ with sync_playwright() as p:
     pg.click('#start-rec')
     pg.wait_for_selector('.set-row')
     check('workout view shows figures', pg.locator('.ex svg.fig').count() >= 8, pg.locator('.ex svg.fig').count())
+    check('every step in a workout has a stick figure, warm-ups included', pg.locator('#view-workout .ex').count() == pg.locator('#view-workout .ex svg.fig').count() and pg.locator('#view-workout .ex').count() > 5, (pg.locator('#view-workout .ex').count(), pg.locator('#view-workout .ex svg.fig').count()))
     check('squat weight is prefilled with the starting guess', pg.input_value('.ex[data-ex="squat"] .set-row input.w') == '65')
     check('squat reps are prefilled', pg.input_value('.ex[data-ex="squat"] .set-row input.r') == '8')
     pg.locator('.ex[data-ex="hammer"] .set-row input.w').nth(1).fill('')
