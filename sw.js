@@ -1,6 +1,6 @@
 // Network first, so app updates arrive as soon as there is a connection.
 // The cache is the fallback for opening Sequoia in a gym with no signal.
-var CACHE = 'sequoia-shell-v8';
+var CACHE = 'sequoia-shell-v9';
 var SHELL = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/engine.js', 'js/figures.js', 'js/store.js', 'js/art.js', 'js/sync.js', 'js/coach.js', 'js/boot.js', 'js/version.js',
   'js/data/exercises.js', 'js/data/sessions.js', 'js/data/figs.js', 'js/data/notes.js',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',

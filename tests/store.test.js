@@ -83,3 +83,32 @@ test('the log is kept newest first whatever order it was stored or restored in',
   t.restore(JSON.stringify({ app: 'sequoia', v: 1, history: [older, newer] }));
   assert.deepEqual(t.state.history.map(x => x.id), ['new', 'old']);
 });
+
+// ---- deleting a session ----
+const sess = (id, at) => ({ id, at, date: '2026-11-20', items: [] });
+test('remove deletes one session and remembers that it was deleted, across a reload', () => {
+  const st = fakeStorage();
+  const s = createStore(st);
+  s.restore(JSON.stringify({ app: 'sequoia', v: 1, history: [sess('a', 2), sess('b', 1)] }));
+  assert.equal(s.remove('a'), true);
+  assert.deepEqual(s.state.history.map(h => h.id), ['b']);
+  assert.deepEqual(s.state.deleted, ['a']);
+  assert.equal(s.remove('nope'), false);
+  const again = createStore(st);
+  assert.deepEqual(again.state.history.map(h => h.id), ['b']);
+  assert.deepEqual(again.state.deleted, ['a']);
+});
+test('restoring a backup brings a deleted session back and forgets its deletion', () => {
+  const s = createStore(fakeStorage());
+  s.restore(JSON.stringify({ app: 'sequoia', v: 1, history: [sess('a', 2), sess('b', 1)] }));
+  s.remove('a'); s.remove('b');
+  s.restore(JSON.stringify({ app: 'sequoia', v: 1, history: [sess('a', 2)] }));
+  assert.deepEqual(s.state.history.map(h => h.id), ['a']);
+  assert.deepEqual(s.state.deleted, ['b']);
+});
+test('a backup never carries the list of deleted sessions', () => {
+  const s = createStore(fakeStorage());
+  s.restore(JSON.stringify({ app: 'sequoia', v: 1, history: [sess('a', 2)] }));
+  s.remove('a');
+  assert.deepEqual(Object.keys(JSON.parse(s.backup())).sort(), ['app', 'history', 'v']);
+});

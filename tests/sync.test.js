@@ -122,3 +122,40 @@ test('guessRepo suggests the owner\'s private repository on a GitHub Pages addre
   assert.equal(guessRepo('claude.ai'), '');
   assert.equal(guessRepo(''), '');
 });
+
+// ---- deletions travel with the log ----
+test('a deleted session is removed from the stored log and stays removed on other phones', async () => {
+  const gh = fakeGitHub({ 'log.json': { sha: 's0', text: JSON.stringify({ app: 'sequoia', v: 1, history: [S('keep', 5), S('oops', 9)] }) } });
+  const c = createSync({ fetch: gh.fetch, repo: 'me/data', token: 'tok' });
+  const out = await syncLog(c, [S('keep', 5)], { deleted: ['oops'] });
+  assert.equal(out.pushed, true);
+  assert.deepEqual(out.history.map(s => s.id), ['keep']);
+  assert.deepEqual(out.deleted, ['oops']);
+  const saved = JSON.parse(gh.files['log.json'].text);
+  assert.deepEqual(saved.history.map(s => s.id), ['keep']);
+  assert.deepEqual(saved.deleted, ['oops']);
+  // a second phone still holds the session and has never heard of the deletion
+  const other = await syncLog(c, [S('oops', 9), S('keep', 5)], {});
+  assert.deepEqual(other.history.map(s => s.id), ['keep']);
+  assert.deepEqual(other.deleted, ['oops']);
+  assert.equal(other.pushed, false);
+});
+
+test('deleting the only session empties the stored log, but an empty phone alone still never wipes it', async () => {
+  const gh = fakeGitHub({ 'log.json': { sha: 's0', text: JSON.stringify({ app: 'sequoia', v: 1, history: [S('only', 5)] }) } });
+  const c = createSync({ fetch: gh.fetch, repo: 'me/data', token: 'tok' });
+  const pulled = await syncLog(c, [], {});
+  assert.deepEqual(pulled.history.map(s => s.id), ['only']);
+  const out = await syncLog(c, [], { deleted: ['only'] });
+  assert.deepEqual(out.history, []);
+  assert.deepEqual(JSON.parse(gh.files['log.json'].text).history, []);
+});
+
+test('restoring a backup overrides an earlier deletion', async () => {
+  const gh = fakeGitHub({ 'log.json': { sha: 's0', text: JSON.stringify({ app: 'sequoia', v: 1, history: [], deleted: ['back', 'gone'] }) } });
+  const c = createSync({ fetch: gh.fetch, repo: 'me/data', token: 'tok' });
+  const out = await syncLog(c, [S('back', 3)], { replace: true });
+  assert.deepEqual(out.history.map(s => s.id), ['back']);
+  assert.deepEqual(out.deleted, ['gone']);
+  assert.deepEqual(JSON.parse(gh.files['log.json'].text).deleted, ['gone']);
+});

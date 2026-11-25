@@ -76,24 +76,37 @@ export function createSync({ fetch, repo, token }) {
 const sameIds = (a, b) => a.length === b.length && a.every((s, i) => s.id === b[i].id);
 const fail = status => (status === 401 || status === 403 ? 'key' : status === 404 ? 'repo' : 'error');
 
-// Bring the phone's log and the stored log.json into line. The stored file is a normal backup.
-// replace: the phone's log is the truth (used after Restore). An empty phone never wipes the store.
+// Bring the phone's log and the stored log.json into line. The stored file is a normal backup, plus
+// a list of the ids of sessions deleted on purpose so that no phone ever brings one back.
+// replace: the phone's log is the truth (used after Restore), and it overrides earlier deletions.
+// An empty phone never wipes the store.
 export async function syncLog(client, history, opts = {}) {
   const local = Array.isArray(history) ? history : [];
+  const mine = Array.isArray(opts.deleted) ? opts.deleted : [];
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
       const cur = await client.getJSON('log.json');
-      if (!cur.ok && cur.status !== 404) return { ok: false, reason: fail(cur.status), history: local, pushed: false };
+      if (!cur.ok && cur.status !== 404) return { ok: false, reason: fail(cur.status), history: local, deleted: mine, pushed: false };
       const remote = cur.ok && cur.data && Array.isArray(cur.data.history) ? cur.data.history : [];
-      const next = opts.replace && local.length ? local : mergeHistory(local, remote);
-      if (!next.length || (cur.ok && sameIds(next, mergeHistory(remote, [])) && !opts.replace)) return { ok: true, reason: 'ok', history: next, pushed: false };
-      const put = await client.putJSON('log.json', { app: 'sequoia', v: 1, history: next }, cur.ok ? cur.sha : null, 'Update training log');
-      if (put.ok) return { ok: true, reason: 'ok', history: next, pushed: true };
-      if (put.status !== 409) return { ok: false, reason: fail(put.status), history: local, pushed: false };
+      const theirs = cur.ok && cur.data && Array.isArray(cur.data.deleted) ? cur.data.deleted.filter(x => typeof x === 'string') : [];
+      const replace = !!opts.replace && local.length > 0;
+      const kept = new Set(replace ? local.map(s => s.id) : []);
+      const deleted = [...new Set([...theirs, ...mine])].filter(id => !kept.has(id)).slice(-500);
+      const gone = new Set(deleted);
+      const next = (replace ? local : mergeHistory(local, remote)).filter(s => !gone.has(s.id));
+      const stored = mergeHistory(remote, []);
+      const same = sameIds(next, stored) && deleted.length === theirs.length && theirs.every(id => gone.has(id));
+      const push = cur.ok ? !same || replace : next.length > 0;
+      if (!push) return { ok: true, reason: 'ok', history: next, deleted, pushed: false };
+      const body = { app: 'sequoia', v: 1, history: next };
+      if (deleted.length) body.deleted = deleted;
+      const put = await client.putJSON('log.json', body, cur.ok ? cur.sha : null, 'Update training log');
+      if (put.ok) return { ok: true, reason: 'ok', history: next, deleted, pushed: true };
+      if (put.status !== 409) return { ok: false, reason: fail(put.status), history: local, deleted: mine, pushed: false };
     }
-    return { ok: false, reason: 'error', history: local, pushed: false };
+    return { ok: false, reason: 'error', history: local, deleted: mine, pushed: false };
   } catch (e) {
-    return { ok: false, reason: 'offline', history: local, pushed: false };
+    return { ok: false, reason: 'offline', history: local, deleted: mine, pushed: false };
   }
 }
 

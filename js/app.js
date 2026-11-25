@@ -152,9 +152,17 @@ let noteShift = 0;
 // The thirty-minute version of a session's kind of day, if the library has one.
 const quick = s => SESSIONS.find(x => x.group === 'thirty' && x.kind === s.group) || null;
 // One bar per muscle group; the line marks the target number of sets.
+const REGION = { quads: 'legs', glutes: 'legs', hams: 'legs', back: 'upper', chest: 'upper', shoulders: 'upper', arms: 'upper', core: 'core' };
 function muscleRows(m, target) {
   const half = x => (Number.isInteger(x) ? String(x) : x.toFixed(1));
-  return MUSCLE_ORDER.map(k => '<div class="mrow"><span class="ml">' + MUSCLE_NAME[k] + '</span><span class="mb"><i style="width:' + Math.min(100, 100 * m[k] / (target * 1.25)) + '%"' + (m[k] === 0 ? ' class="zero"' : '') + '></i></span><span class="mn">' + half(m[k]) + '</span></div>').join('');
+  return MUSCLE_ORDER.map((k, n) => '<div class="mrow' + (m[k] >= target ? ' hit' : '') + '" data-region="' + REGION[k] + '"><span class="ml">' + MUSCLE_NAME[k] + '</span><span class="mb"><i style="width:' + Math.min(100, 100 * m[k] / (target * 1.25)) + '%;animation-delay:' + n * 60 + 'ms"' + (m[k] === 0 ? ' class="zero"' : '') + '></i><b class="goal" aria-hidden="true"></b></span><span class="mn">' + half(m[k]) + (m[k] >= target ? '<span class="tick" aria-label="target reached">✓</span>' : '') + '</span></div>').join('');
+}
+// The headline above the weekly chart: how many of the eight groups got work, as a row of leaves.
+function muscleScore(m, target) {
+  const worked = MUSCLE_ORDER.filter(k => m[k] > 0).length, hit = MUSCLE_ORDER.filter(k => m[k] >= target).length;
+  return '<div class="score" id="week-score"><div class="big"><strong>' + worked + '</strong><span>of 8 muscle groups worked' + (hit ? '<em>' + hit + ' at the weekly target</em>' : worked ? '<em>none at the weekly target yet</em>' : '<em>a fresh week</em>') + '</span></div>'
+    + '<div class="leafs" aria-hidden="true">' + MUSCLE_ORDER.map(k => '<i data-region="' + REGION[k] + '" class="' + (m[k] >= target ? 'full' : m[k] > 0 ? 'on' : '') + '"></i>').join('') + '</div></div>'
+    + '<div class="legend3" aria-hidden="true"><span data-region="legs">Legs</span><span data-region="upper">Upper body</span><span data-region="core">Core</span><span class="goalkey">Target</span></div>';
 }
 function renderToday() {
   const now = Date.now(), ext = outsideLoad();
@@ -162,7 +170,7 @@ function renderToday() {
   const where = status(st.history, EXERCISES, now, ext);
   const s = rec.sessionId ? byId(rec.sessionId) : null;
   const act = st.active && st.active.start ? activeSession() : null;
-  const days = week(st.history, now);
+  const days = week(st.history, now), m7 = muscleSets(st.history, EXERCISES, now, 7);
   const note = NOTES[(Math.floor((now - new Date(now).getTimezoneOffset() * 60000) / 864e5) + noteShift) % NOTES.length];
   const today = localDate(now);
   const about = x => '<p class="about" id="today-about"><strong>What it trains:</strong> ' + esc((GROUPS[x.group] || {}).about || '') + '</p>';
@@ -170,7 +178,7 @@ function renderToday() {
   if (act) {
     hero = '<section class="hero ' + tone(act) + '">' + TOPO + '<div class="eyebrow">In progress</div><h1 id="today-title">' + esc(act.title) + '</h1>'
       + '<p class="why" id="today-why">' + (st.active.pauseAt ? 'Paused at ' + clock(elapsedMs(st.active) / 1000) + '. Pick up where you left off.' : st.active.start ? 'You have a session under way. Pick up where you left off.' : 'You opened this session and have not started it yet.') + '</p>' + about(act)
-      + '<div class="btns"><button class="solid" id="resume" type="button">Resume session</button></div></section>';
+      + '<div class="btns"><button class="solid" id="resume" type="button">' + (st.active.start ? 'Resume session' : 'Open session') + '</button><button class="ghost" id="cancel-active" type="button">Cancel workout</button><span id="cancel-active-ask" hidden>Cancel it? Nothing will be saved. <button class="solid" id="cancel-active-yes" type="button">Yes, cancel it</button> <button class="ghost" id="cancel-active-no" type="button">Keep it</button></span></div></section>';
   } else if (s) {
     const last = st.history.find(h => h.sessionId === s.id);
     const nx = rec.light && rec.next && rec.next.sessionId ? byId(rec.next.sessionId) : null;
@@ -190,12 +198,12 @@ function renderToday() {
   $('view-today').innerHTML = '<div class="wrap"><header class="top"><div class="eyebrow">' + esc(nice(today)) + '</div><h1 style="margin-top:6px">Today</h1></header><main style="margin-top:14px">' + hero
     + '<section class="card" id="where"><h2>Where you are</h2>' + whereRow('Legs', where.lower) + whereRow('Upper body', where.upper)
     + '<h3 style="margin-top:16px">Last seven days</h3>' + recentList(now)
-    + '<div class="week">' + days.map(d => '<div class="day' + (d.date === today ? ' today' : '') + '"><div class="d">' + d.label + '</div><div class="n">' + Number(d.date.slice(8)) + '</div><div class="dots">'
+    + '<div class="week">' + days.map(d => '<div class="day' + (d.date === today ? ' today' : '') + (d.sessions.length ? ' lifted' : rings(d) ? ' moved' : '') + '"><div class="d">' + d.label + '</div><div class="n">' + Number(d.date.slice(8)) + '</div><div class="dots">'
       + d.sessions.map(x => '<span class="dot tone-' + esc((GROUPS[x.group] || {}).tone || 'light') + '" title="' + esc(x.title) + '"></span>').join('') + rings(d) + '</div></div>').join('') + '</div>'
     + '<p class="small" style="margin-top:8px">Filled dot: a lift. Open ring: a ride, run, swim or other activity.</p>'
     + (outside.asOf ? '<p class="small" id="activity-asof">Strava activity as of ' + esc(whenText(new Date(outside.asOf).getTime())) + '. Pull down to check for newer.</p>' : '')
     + '<div class="btns"><button class="ghost" id="refresh-now" type="button">Check for new data</button></div></section>'
-    + '<section class="card" id="week-muscles"><h2>Muscles this week</h2><p class="small" style="margin-top:6px;font-size:15px">Hard sets in the last 7 days. The line marks ' + WEEKLY_SETS + '.</p><div class="mrows">' + muscleRows(muscleSets(st.history, EXERCISES, now, 7), WEEKLY_SETS) + '</div>'
+    + '<section class="card" id="week-muscles"><h2>Muscles this week</h2><p class="small" style="margin-top:4px;font-size:15px">Hard sets in the last 7 days. The flag marks ' + WEEKLY_SETS + '.</p>' + muscleScore(m7, WEEKLY_SETS) + '<div class="mrows">' + muscleRows(m7, WEEKLY_SETS) + '</div>'
     + '<ul class="points small" style="font-size:15px"><li><strong>Aim for twice a week.</strong> A muscle group grows best when it gets hard work about twice a week, adding up to around ten sets.</li><li><strong>Once a week</strong> mostly holds what you have.</li><li><strong>Why:</strong> the rebuilding after a session lasts a day or two. A second session a few days later starts the next round.</li></ul></section>'
     + '<section class="card note-card"><div class="eyebrow">Field notes</div><h2 id="note-title">' + esc(note.title) + '</h2><p class="finding" style="margin-top:8px">' + leadBold(note.body) + '</p>'
     + '<ul class="points"><li><strong>Why it matters for you:</strong> ' + esc(note.why) + '</li></ul><div class="btns"><button class="ghost" id="note-next" type="button">Another note</button></div></section></main></div>';
@@ -238,7 +246,7 @@ function renderWorkout() {
   $('view-workout').innerHTML = '<div class="bar"><div class="wrap"><div class="bar-row"><span id="count"></span><span class="bar-btns"><button type="button" id="pause-btn">Pause</button><button type="button" id="exit-btn">Exit</button></span><span class="clock" id="clock" aria-label="Session time">0:00</span></div><div class="segs" aria-hidden="true">' + segs + '</div></div></div>'
     + '<div class="wrap"><header class="top"><div class="eyebrow">' + esc((GROUPS[s.group] || {}).label || '') + ' · about ' + s.minutes + ' minutes</div><h1 style="margin-top:6px">' + esc(s.title) + '</h1><p class="lede">' + esc(s.sub) + '</p></header>'
     + '<main>' + (s.cardio && s.blocks.some(b => b.items.some(i => i.timer)) ? '<div class="auto"><button class="solid" id="auto-start" type="button">Start and run it all</button><p class="small" style="margin-top:6px;color:var(--on-page)">One tap. Each timed step starts by itself and is called out loud, so you never have to stop and look.</p></div>' : '') + html + '<section class="card finish" id="finish"><h2 id="fin-title"></h2><p id="fin-line" style="margin-top:6px"></p><p id="fin-total" style="margin-top:8px;font-weight:600"></p><div class="btns"><button class="solid" id="save-session" type="button">Save session</button>'
-    + '<button class="ghost" id="discard" type="button">Discard</button><span id="discard-ask" hidden>Throw this session away? <button class="solid" id="discard-yes" type="button">Yes, discard</button> <button class="ghost" id="discard-no" type="button">Keep it</button></span></div></section>'
+    + '<button class="ghost" id="cancel-workout" type="button">Cancel workout</button><span id="cancel-ask" hidden>Cancel this workout? Nothing from it will be saved. <button class="solid" id="cancel-yes" type="button">Yes, cancel it</button> <button class="ghost" id="cancel-no" type="button">Keep going</button></span></div></section>'
     + '<section class="card"><h2 style="font-size:20px">Cool-down</h2><p class="small" style="margin-top:4px;font-size:15px">Two minutes of easy walking, then a figure-four stretch and a half-kneeling hip flexor stretch, about 45 seconds a side.</p></section></main></div>';
   syncWorkout();
 }
@@ -298,6 +306,13 @@ function poundsLine(lb, tail) {
   const c = compare(lb);
   return 'You lifted ' + lb.toLocaleString('en-US') + ' lb' + (tail ? ' ' + tail : '') + (c ? ', about the weight of ' + c.text + '.' : '.');
 }
+// Throw the workout in progress away: nothing is logged and nothing is left paused.
+function cancelWorkout(message) {
+  st.active = null; store.save(); hideDock(); letSleep();
+  try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) { /* no voice */ }
+  if (message) toast(message);
+  location.hash = 'today'; route();
+}
 function saveSession() {
   const s = activeSession(), a = st.active;
   if (!s || !a.start) return;
@@ -306,6 +321,7 @@ function saveSession() {
   let done = 0, total = 0;
   const items = buildItems(s);
   for (const b of s.blocks) { const c = blockCounts(b); done += c.d; total += c.t; }
+  if (!items.some(it => it.sets.some(x => x.done))) return cancelWorkout('Nothing was finished, so nothing was logged.');
   const totalLb = volume(items);
   st.history.unshift({ id: 's-' + end, sessionId: s.id, group: s.group, title: s.title, date: localDate(a.start), at: end, durationSec: Math.round(elapsedMs({ ...a, end }) / 1000), setsDone: done, setsTotal: total, totalLb, items });
   st.active = null;
@@ -347,7 +363,7 @@ function renderLibrary() {
     }).join('') + '</section>';
   }
   $('view-library').innerHTML = '<div class="wrap"><header class="top"><div class="eyebrow">Library</div><h1 style="margin-top:6px">Every session</h1><p class="lede">' + SESSIONS.length + ' sessions in ' + Object.keys(GROUPS).length + ' groups.</p>'
-    + (busy ? '<p class="small" style="margin-top:8px">Save or discard the session in progress to start a different one.</p>' : '') + '</header><main>' + html + '</main></div>';
+    + (busy ? '<p class="small" style="margin-top:8px">Save or cancel the session in progress to start a different one.</p>' : '') + '</header><main>' + html + '</main></div>';
 }
 
 /* ---------- Progress ---------- */
@@ -375,7 +391,7 @@ function renderProgress() {
       + rows.map(r => '<tr data-ex="' + esc(r.ex) + '"><td>' + esc(r.name) + '<span class="sub">Best ' + esc(show(r.best, r.unit)) + (r.milestone ? ' · milestone ' + esc(show(r.milestone, r.unit)) : '') + '</span></td><td class="n last">' + esc(show(r.last, r.unit)) + '</td><td class="n next">' + esc(show(r.next, r.unit)) + '</td></tr>').join('')
       + '</tbody></table>' : '<p class="small" style="margin-top:6px">Weights you log are tracked here, lift by lift, with the next target for each.</p>') + '</div></section>'
     + '<section class="card"><h2>Sessions</h2><div id="sessions" style="margin-top:8px">' + (h.length ? h.map(s => '<details class="sess"><summary><span><span class="when">' + esc(nice(s.date)) + ' · ' + esc(s.title) + '</span><span class="m">' + clock(s.durationSec) + ' · ' + (s.setsDone || 0) + ' of ' + (s.setsTotal || 0) + ' sets' + (volume(s.items) ? ' · ' + volume(s.items).toLocaleString('en-US') + ' lb' : '') + '</span></span></summary><ul>'
-      + s.items.filter(it => (it.sets || []).some(x => x.done)).map(it => '<li>' + esc(it.name) + ': ' + esc(setsText(it)) + (FEEL[it.feel] ? ' · ' + FEEL[it.feel].toLowerCase() : '') + (volume([it]) ? ' · ' + volume([it]).toLocaleString('en-US') + ' lb' : '') + '</li>').join('') + '</ul></details>').join('') : '<p class="small">No sessions yet.</p>') + '</div></section>'
+      + s.items.filter(it => (it.sets || []).some(x => x.done)).map(it => '<li>' + esc(it.name) + ': ' + esc(setsText(it)) + (FEEL[it.feel] ? ' · ' + FEEL[it.feel].toLowerCase() : '') + (volume([it]) ? ' · ' + volume([it]).toLocaleString('en-US') + ' lb' : '') + '</li>').join('') + '</ul><div class="btns del"><button class="ghost" type="button" data-del="' + esc(s.id) + '">Delete this session</button><span hidden>Delete it for good? <button class="solid" type="button" data-del-yes="' + esc(s.id) + '">Yes, delete</button> <button class="ghost" type="button" data-del-no>Keep</button></span></div></details>').join('') : '<p class="small">No sessions yet.</p>') + '</div></section>'
     + '<section class="card"><h2>Ask your coach</h2><p style="margin-top:6px">Copy your log and paste it into your chat with Claude for a review or new sessions.</p><div class="btns"><button class="ghost" id="copy-log" type="button">Copy log for Claude</button></div><textarea id="log-out" hidden readonly aria-label="Your log as text"></textarea></section></main></div>';
 }
 
@@ -476,21 +492,28 @@ function redrawAfterSync() {
   if (v === 'settings') { const el = $('sync-status'); if (el) el.textContent = syncStatusText(); } else route();
 }
 // Pull Strava, then bring the log on this phone and the stored log into line.
+let syncAgain = null;
 async function syncNow(opts = {}) {
-  if (!sync || syncState.busy) return;
+  if (!sync) return;
+  if (syncState.busy) { syncAgain = { ...(syncAgain || {}), ...opts }; return; }
   syncState.busy = true; syncState.note = '';
   try {
     try { const act = await sync.getJSON('activity.json'); if (act.ok) setOutside(act.data); } catch (e) { /* the log sync below reports the connection */ }
     try { const cn = await sync.getJSON('coach.json'); if (cn.ok) { coachNote = cn.data; storage.setItem('sequoia-coach', JSON.stringify(cn.data)); } } catch (e) { /* optional file */ }
     const before = st.history.map(h => h.id).join();
-    const out = await syncLog(sync, st.history, opts);
+    const out = await syncLog(sync, st.history, { ...opts, deleted: st.deleted || [] });
     syncState.ok = out.ok; syncState.reason = out.reason;
     if (out.ok) {
       syncState.at = Date.now();
-      if (out.history.map(h => h.id).join() !== before) { store.restore(JSON.stringify({ app: 'sequoia', v: 1, history: out.history })); refreshTitles(); }
+      // Anything deleted while this sync was in flight stays deleted.
+      const gone = new Set([...(st.deleted || []), ...out.deleted]);
+      const merged = out.history.filter(h => !gone.has(h.id));
+      st.deleted = [...gone].slice(-500);
+      if (merged.map(h => h.id).join() !== before) { store.restore(JSON.stringify({ app: 'sequoia', v: 1, history: merged })); refreshTitles(); } else store.save();
     }
   } finally { syncState.busy = false; }
   redrawAfterSync();
+  if (syncAgain) { const again = syncAgain; syncAgain = null; return syncNow(again); }
 }
 async function connectSync() {
   const repo = $('sync-repo').value.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\/+$/, ''), token = $('sync-token').value.trim();
@@ -663,7 +686,7 @@ document.addEventListener('click', ev => {
   if (t.closest('#start-next')) return startSession(t.closest('#start-next').dataset.id);
   if (t.closest('#resume')) { resumeSession(); location.hash = 'workout'; return route(); }
   if (t.closest('#pause-btn') && a) { if (a.pauseAt) resumeSession(); else pauseSession(); return syncWorkout(); }
-  if (t.closest('#exit-btn') && a) { pauseSession(); hideDock(); letSleep(); toast(a.start ? 'Paused. Pick it up from Today.' : 'Saved for later.'); location.hash = 'today'; return route(); }
+  if (t.closest('#exit-btn') && a) { pauseSession(); hideDock(); letSleep(); toast(a.start ? 'Paused. Resume or cancel it from Today.' : 'Set aside. Resume or cancel it from Today.'); location.hash = 'today'; return route(); }
   if (t.closest('#auto-start') && a) { wakeAudio(); begin(); a.auto = true; store.save(); syncWorkout(); if (!runNext(null)) toast('Every timed step is already done.'); return; }
   if (t.closest('#start-short')) return startSession(t.closest('#start-short').dataset.id);
   if (t.closest('#note-next')) { noteShift++; return renderToday(); }
@@ -672,9 +695,17 @@ document.addEventListener('click', ev => {
   const fil = t.closest('#lib-filter [data-max]');
   if (fil) { libMax = +fil.dataset.max; return renderLibrary(); }
   if (t.closest('#save-session')) return saveSession();
-  if (t.closest('#discard')) { $('discard-ask').hidden = false; $('discard').hidden = true; return; }
-  if (t.closest('#discard-no')) { $('discard-ask').hidden = true; $('discard').hidden = false; return; }
-  if (t.closest('#discard-yes')) { st.active = null; store.save(); hideDock(); letSleep(); location.hash = 'today'; return route(); }
+  if (t.closest('#cancel-workout')) { $('cancel-ask').hidden = false; $('cancel-workout').hidden = true; return; }
+  if (t.closest('#cancel-no')) { $('cancel-ask').hidden = true; $('cancel-workout').hidden = false; return; }
+  if (t.closest('#cancel-yes') || t.closest('#cancel-active-yes')) return cancelWorkout('Workout cancelled. Nothing was saved.');
+  if (t.closest('#cancel-active')) { $('cancel-active-ask').hidden = false; $('cancel-active').hidden = true; return; }
+  if (t.closest('#cancel-active-no')) { $('cancel-active-ask').hidden = true; $('cancel-active').hidden = false; return; }
+  const del = t.closest('[data-del]');
+  if (del) { del.hidden = true; del.nextElementSibling.hidden = false; return; }
+  const delNo = t.closest('[data-del-no]');
+  if (delNo) { delNo.parentElement.hidden = true; delNo.parentElement.previousElementSibling.hidden = false; return; }
+  const delYes = t.closest('[data-del-yes]');
+  if (delYes) { if (store.remove(delYes.dataset.delYes)) { toast('Session deleted.'); syncNow(); } return renderProgress(); }
   if (t.closest('#copy-log')) return copyText(logText(st.history, localDate(Date.now())), 'Log copied. Paste it into your chat with Claude.', $('log-out'));
   if (t.closest('#refresh-now')) return refreshAll();
   if (t.closest('#sync-connect')) return connectSync();

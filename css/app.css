@@ -315,3 +315,49 @@ details.how{margin-top:6px}
 .srow .did svg{width:15px;height:15px;display:block}
 .auto{margin:0 0 14px}
 .auto .solid{width:100%}
+
+/* Round 11: a livelier weekly chart and week strip, cancel and delete */
+.mrow[data-region="legs"]{--bar1:#B55A33;--bar2:#F0A261}
+.mrow[data-region="upper"]{--bar1:#1E6470;--bar2:#49B3AC}
+.mrow[data-region="core"]{--bar1:#A9781F;--bar2:#EBC15C}
+.mrow[data-region] .mb{height:16px;background-image:none;background:color-mix(in srgb,var(--bar2) 16%,var(--surface));overflow:visible}
+.mrow[data-region] .mb i{background:linear-gradient(90deg,var(--bar1),var(--bar2));box-shadow:inset 0 -3px 0 rgba(0,0,0,.08),inset 0 2px 0 rgba(255,255,255,.28);transform-origin:left center;animation:grow .7s cubic-bezier(.2,.8,.2,1) both}
+.mrow[data-region] .mb .goal{position:absolute;left:80%;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:2px;opacity:.55}
+.mrow[data-region] .mb .goal::after{content:"";position:absolute;left:2px;top:0;border:4px solid transparent;border-left:7px solid var(--ink);border-right:0}
+.mrow[data-region].hit .mb .goal{opacity:1}
+.mrow[data-region] .ml{font-weight:600}
+.mrow[data-region]:has(i.zero) .mb{background:repeating-linear-gradient(90deg,var(--soft) 0 6px,transparent 6px 10px)}
+.mrow .tick{display:inline-grid;place-items:center;width:16px;height:16px;margin-left:4px;border-radius:50%;background:#3E7B4F;color:#fff;font-size:11px;vertical-align:1px}
+.mrow[data-region]{grid-template-columns:96px 1fr 56px}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.mrow[data-region] .mb i{animation:none}}
+.score{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,#15313D,#1E6470);color:#F6F0E4}
+.score .big{display:flex;align-items:center;gap:10px}
+.score .big strong{font-family:var(--display);font-size:44px;line-height:1}
+.score .big span{font-size:14px;font-weight:600;line-height:1.25}
+.score .big em{display:block;font-style:normal;font-weight:400;opacity:.85}
+.leafs{display:grid;grid-template-columns:repeat(4,16px);gap:6px}
+.leafs i{width:16px;height:16px;border-radius:2px 70% 2px 70%;border:1.5px solid rgba(246,240,228,.55);display:block}
+.leafs i.on[data-region="legs"],.leafs i.full[data-region="legs"]{background:#F0A261;border-color:#F0A261}
+.leafs i.on[data-region="upper"],.leafs i.full[data-region="upper"]{background:#49B3AC;border-color:#49B3AC}
+.leafs i.on[data-region="core"],.leafs i.full[data-region="core"]{background:#EBC15C;border-color:#EBC15C}
+.leafs i.on{opacity:.6}
+.leafs i.full{box-shadow:0 0 0 2px rgba(246,240,228,.9)}
+.legend3{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.legend3 span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.legend3 [data-region="legs"]::before{background:#F0A261}.legend3 [data-region="upper"]::before{background:#49B3AC}.legend3 [data-region="core"]::before{background:#EBC15C}
+.legend3 .goalkey::before{width:2px;height:12px;border-radius:1px;background:var(--ink)}
+.day{transition:transform .15s}
+.day.lifted{background:linear-gradient(160deg,#F0A261,#C2643A);border-color:transparent;color:#fff;box-shadow:0 3px 8px rgba(181,90,51,.35)}
+.day.lifted .d{color:rgba(255,255,255,.9)}
+.day.lifted .dot{background:#fff}
+.day.lifted .ring{border-color:#fff}
+.day.moved{background:color-mix(in srgb,#49B3AC 18%,var(--surface));border-color:#49B3AC}
+.day.moved .ring{border-color:#1E6470}
+.day.today{box-shadow:0 0 0 2px var(--ink)}
+.day.today.lifted{box-shadow:0 0 0 2px var(--ink),0 3px 8px rgba(181,90,51,.35)}
+.btns.del{margin-top:10px}
+.btns.del button[data-del]{color:var(--link);border-color:var(--link);font-size:14px;padding:7px 14px}
+#cancel-workout,#cancel-active{color:var(--link);border-color:var(--link)}
+#cancel-ask,#cancel-active-ask,.btns.del span{display:block;width:100%;font-weight:600}
+#cancel-ask[hidden],#cancel-active-ask[hidden],.btns.del span[hidden]{display:none}
